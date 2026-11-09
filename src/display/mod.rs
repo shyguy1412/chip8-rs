@@ -34,12 +34,7 @@ impl FrameBuffer {
 
 impl std::default::Default for FrameBuffer {
     fn default() -> Self {
-        let mut a = Self([0; FRAME_BYTES]);
-        a.iter_mut()
-            .enumerate()
-            .map(|(i, n)| *n = 0xAAAAAAAAAAAAAAAA)
-            .collect::<Vec<_>>();
-        a
+        Self([0; FRAME_BYTES])
     }
 }
 
@@ -81,11 +76,12 @@ impl Chip8Display for DoubleBuffer {
     }
 
     fn draw(&mut self, x: u8, y: u8, row: u8) -> bool {
-        let new_row = self.draw_frame[y as usize] ^ (row as u64).rotate_left(x as u32);
+        let y = y as usize % FRAME_HEIGHT;
+        let new_row = self.draw_frame[y] ^ (row as u64).rotate_left(x as u32);
 
-        let intersected = new_row & self.draw_frame[y as usize] > 0;
+        let intersected = new_row & self.draw_frame[y] > 0;
 
-        self.draw_frame[y as usize] = new_row;
+        self.draw_frame[y] = new_row;
 
         //return if intersected
         intersected

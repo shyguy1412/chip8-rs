@@ -6,6 +6,8 @@ mod skip;
 pub use skip::*;
 mod load;
 pub use load::*;
+mod input;
+pub use input::*;
 
 use std::num::NonZero;
 

@@ -40,7 +40,7 @@ pub fn store_multiple_at_index(memory: &mut Memory, op_1: u8, op_2: u8) -> NextI
     let a = op_1 & A_NIBBLE_MASK;
     let index = *memory.index_register;
 
-    for i in 0..a {
+    for i in 0..=a {
         let byte = *memory.registers[i as usize];
         memory.ram[index + i as u16] = byte;
     }
@@ -53,7 +53,7 @@ pub fn load_multiple_from_index(memory: &mut Memory, op_1: u8, op_2: u8) -> Next
     let a = op_1 & A_NIBBLE_MASK;
     let index = *memory.index_register;
 
-    for i in 0..a {
+    for i in 0..=a {
         let byte = memory.ram[index + i as u16];
         memory.registers[i as usize].load(byte);
     }
@@ -64,11 +64,28 @@ pub fn load_multiple_from_index(memory: &mut Memory, op_1: u8, op_2: u8) -> Next
 //0xFa33 LD B, Va
 pub fn store_binary_coded_decimal(memory: &mut Memory, op_1: u8, op_2: u8) -> NextInstruction {
     let a = op_1 & A_NIBBLE_MASK;
-    let hundreds = a / 100;
-    let tens = (a - (hundreds * 100)) / 10;
-    let ones = (a - (hundreds * 100) - (tens * 10));
+    let a_register = *memory.registers[a as usize];
+    let hundreds = a_register / 100;
+    let tens = (a_register - (hundreds * 100)) / 10;
+    let ones = (a_register - (hundreds * 100) - (tens * 10));
     memory.ram[*memory.index_register] = hundreds;
     memory.ram[*memory.index_register + 1] = tens;
     memory.ram[*memory.index_register + 2] = ones;
+    Increment
+}
+
+//0xFa15 LD DT, Va
+pub fn set_delay_timer(memory: &mut Memory, op_1: u8, op_2: u8) -> NextInstruction {
+    let a = op_1 & A_NIBBLE_MASK;
+    let a_register = *memory.registers[a as usize];
+    *memory.delay_timer.lock().unwrap_or_else(|e| e.into_inner()) = a_register;
+    Increment
+}
+
+//0xFa07 LD Va, DT
+pub fn load_delay_timer(memory: &mut Memory, op_1: u8, op_2: u8) -> NextInstruction {
+    let a = op_1 & A_NIBBLE_MASK;
+    let delay_timer = *memory.delay_timer.lock().unwrap_or_else(|e| e.into_inner());
+    memory.registers[a as usize].load(delay_timer);
     Increment
 }

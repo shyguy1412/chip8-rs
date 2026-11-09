@@ -1,4 +1,7 @@
-use std::num::NonZero;
+use std::{
+    num::NonZero,
+    sync::{Arc, Mutex},
+};
 
 use crate::sprites::HEX_DIGITS;
 
@@ -83,8 +86,8 @@ pub struct Memory {
     pub registers: [Register<u8>; 16],
     pub index_register: Register<u16>,
     pub stack: Stack,
-    pub delay_timer: u8,
-    pub sound_timer: u8,
+    pub delay_timer: Arc<Mutex<u8>>,
+    pub sound_timer: Arc<Mutex<u8>>,
     pub program_counter: NonZero<u16>,
 }
 

@@ -83,9 +83,8 @@ impl<D: Chip8Display> Chip8<D, Initialized> {
         match [code, variant, op_1, op_2] {
             [.., 0x00, 0xE0] => operations::clear_screen(framebuffer),
             [.., 0x00, 0xEE] => operations::return_subroutine(memory, op_1, op_2),
-            [0x00, ..] => {
-                panic!("SYS opcode: This should not be used or implemented by modern interpreters")
-            }
+            //noop
+            [0x00, ..] => NextInstruction::Increment,
 
             [0x10, ..] => operations::jump(op_1, op_2),
             [0x20, ..] => operations::call_subroutine(memory, op_1, op_2),
@@ -112,12 +111,12 @@ impl<D: Chip8Display> Chip8<D, Initialized> {
             [0xC0, ..] => todo!("C -> RND"),
             [0xD0, ..] => operations::draw(memory, framebuffer, op_1, op_2),
 
-            [0xE0, _, _, 0x9E] => todo!("E/9E -> SKP"),
-            [0xE0, _, _, 0xA1] => todo!("E/A1 -> SKNP"),
+            [0xE0, _, _, 0x9E] => operations::skip_if_button_pressed(memory, op_1, op_2),
+            [0xE0, _, _, 0xA1] => operations::skip_if_button_not_pressed(memory, op_1, op_2),
 
-            [0xF0, _, _, 0x07] => todo!("F/07 -> LD"),
-            [0xF0, _, _, 0xA7] => todo!("F/A7 -> LD"),
-            [0xF0, _, _, 0x15] => todo!("F/15 -> LD"),
+            [0xF0, _, _, 0x07] => operations::load_delay_timer(memory, op_1, op_2),
+            [0xF0, _, _, 0x0A] => todo!("F/0A -> LD"),
+            [0xF0, _, _, 0x15] => operations::set_delay_timer(memory, op_1, op_2),
             [0xF0, _, _, 0x18] => todo!("F/18 -> LD"),
             [0xF0, _, _, 0x1E] => operations::add_index_pointer(memory, op_1, op_2),
             [0xF0, _, _, 0x29] => todo!("F/29 -> LD"),
@@ -133,47 +132,43 @@ impl<D: Chip8Display> Chip8<D, Initialized> {
 fn main() {
     // let bin = include_bytes!("../test/bin/1-chip8-logo.ch8");
     // let bin = include_bytes!("../test/bin/2-ibm-logo.ch8");
-    // let bin = include_bytes!("../test/bin/3-corax+.ch8");
-    let bin = include_bytes!("../test/bin/4-flags.ch8");
+    let bin = include_bytes!("../test/bin/3-corax+.ch8");
+    // let bin = include_bytes!("../test/bin/4-flags.ch8");
+    // let bin = include_bytes!("../test/bin/5-quirks.ch8");
 
     let chip8: Chip8<display::DoubleBuffer, _> = Default::default();
     let mut chip8 = chip8.load_binary(bin);
 
-    let framebuffer = chip8.framebuffer.get_frame_buffer_ref();
+    //automatically enable chip8 test for test 5-quirks
+    // chip8.memory.ram[512] = 1;
 
-    draw_thread(framebuffer);
+    let framebuffer = chip8.framebuffer.get_frame_buffer_ref();
+    let delay_timer = chip8.memory.delay_timer.clone();
+    let sound_timer = chip8.memory.sound_timer.clone();
+
+    timer_thread(framebuffer, delay_timer, sound_timer);
 
     loop {
         chip8.cycle();
     }
 }
 
-fn draw_thread(framebuffer: Arc<Mutex<FrameBuffer>>) -> () {
+fn timer_thread(
+    framebuffer: Arc<Mutex<FrameBuffer>>,
+    delay_timer: Arc<Mutex<u8>>,
+    sound_timer: Arc<Mutex<u8>>,
+) -> () {
     std::thread::spawn(move || {
         loop {
             const TARGET_FPS: u16 = 60;
             const FRAME_TIMING: u16 = 1000 / TARGET_FPS;
-            const HIGH_SYMBOL: char = '■';
-            const LOW_SYMBOL: char = '□';
 
             let frame_start = std::time::Instant::now();
 
-            let framebuffer = framebuffer.lock().unwrap_or_else(|e| e.into_inner());
+            process_timer(&*delay_timer);
+            process_timer(&*sound_timer);
 
-            let output: String = framebuffer
-                .iter()
-                .flat_map(|a| (0..64).map(|i| *a & 0x1 << i))
-                .map(|bit| match bit {
-                    0x00 => LOW_SYMBOL,
-                    _ => HIGH_SYMBOL,
-                })
-                .collect::<Vec<char>>()
-                .chunks_exact(FRAME_WIDTH)
-                .map(|chars| chars.iter().collect::<String>())
-                .fold(String::new(), |prev, cur| format!("{prev}{cur}\n"));
-            println!();
-            print!("{output}\x1B[{}A", FRAME_HEIGHT + 1);
-            std::io::stdout().flush();
+            draw_frame(&*framebuffer);
 
             let dif = std::time::Instant::now()
                 .duration_since(frame_start)
@@ -186,4 +181,31 @@ fn draw_thread(framebuffer: Arc<Mutex<FrameBuffer>>) -> () {
             std::thread::sleep(Duration::from_millis(sleep as u64));
         }
     });
+}
+
+fn process_timer(timer: &Mutex<u8>) {
+    let mut timer = timer.lock().unwrap_or_else(|e| e.into_inner());
+    *timer = timer.saturating_sub(1);
+}
+
+fn draw_frame(framebuffer: &Mutex<FrameBuffer>) {
+    const HIGH_SYMBOL: char = '■';
+    const LOW_SYMBOL: char = '□';
+
+    let framebuffer = framebuffer.lock().unwrap_or_else(|e| e.into_inner());
+
+    let output: String = framebuffer
+        .iter()
+        .flat_map(|a| (0..64).map(|i| *a & 0x1 << i))
+        .map(|bit| match bit {
+            0x00 => LOW_SYMBOL,
+            _ => HIGH_SYMBOL,
+        })
+        .collect::<Vec<char>>()
+        .chunks_exact(FRAME_WIDTH)
+        .map(|chars| chars.iter().collect::<String>())
+        .fold(String::new(), |prev, cur| format!("{prev}{cur}\n"));
+    println!();
+    print!("{output}\x1B[{}A", FRAME_HEIGHT + 1);
+    std::io::stdout().flush();
 }
