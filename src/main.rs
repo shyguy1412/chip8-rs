@@ -1,12 +1,21 @@
 #![cfg_attr(debug_assertions, allow(dead_code, unused))]
 
 mod display;
-use std::{fmt::format, io::Write, marker::PhantomData, ops::Index, time::Duration};
+use std::{
+    fmt::format,
+    io::Write,
+    marker::PhantomData,
+    ops::{Add, Index},
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 
 use display::*;
 
 mod memory;
 use memory::*;
+
+use crate::operations::NextInstruction;
 
 mod operations;
 
@@ -21,14 +30,7 @@ impl Chip8State for Initialized {}
 #[derive(Debug)]
 struct Chip8<D: Chip8Display, State: Chip8State = Initialized> {
     framebuffer: D,
-    registers: [Register<u8>; 16],
-    index_register: Register<u16>,
-    stack: [u16; 16],
-    stack_pointer: u8,
-    program_counter: u16,
-    ram: Ram,
-    delay_timer: u8,
-    sound_timer: u8,
+    memory: Memory,
     state: PhantomData<State>,
 }
 
@@ -37,14 +39,7 @@ impl<D: Chip8Display + Default> Default for Chip8<D, Uninitialized> {
     fn default() -> Self {
         Self {
             framebuffer: Default::default(),
-            registers: Default::default(),
-            index_register: Default::default(),
-            stack: Default::default(),
-            stack_pointer: Default::default(),
-            program_counter: 0x200,
-            ram: Default::default(),
-            delay_timer: Default::default(),
-            sound_timer: Default::default(),
+            memory: Default::default(),
             state: Default::default(),
         }
     }
@@ -53,17 +48,10 @@ impl<D: Chip8Display + Default> Default for Chip8<D, Uninitialized> {
 impl<D: Chip8Display> Chip8<D, Uninitialized> {
     pub fn load_binary(mut self, bin: &[u8]) -> Chip8<D, Initialized> {
         //Todo: check bounds to see if bin fits in ram
-        self.ram[0x200..0x200 + bin.len()].clone_from_slice(bin);
+        self.memory.ram[0x200..0x200 + bin.len()].clone_from_slice(bin);
         Chip8 {
             framebuffer: self.framebuffer,
-            registers: self.registers,
-            index_register: self.index_register,
-            stack: self.stack,
-            stack_pointer: self.stack_pointer,
-            program_counter: self.program_counter,
-            ram: self.ram,
-            delay_timer: self.delay_timer,
-            sound_timer: self.sound_timer,
+            memory: self.memory,
             state: PhantomData,
         }
     }
@@ -71,44 +59,58 @@ impl<D: Chip8Display> Chip8<D, Uninitialized> {
 
 impl<D: Chip8Display> Chip8<D, Initialized> {
     pub fn cycle(&mut self) {
-        let [op_1, op_2] =
-            &self.ram[self.program_counter as usize..self.program_counter as usize + 2]
-        else {
-            unreachable!("We always grab exactly 2 bytes")
-        };
+        let [op_1, op_2] = self.memory.get_next_operation();
 
+        let next_instruction = self.perform_operation(op_1, op_2);
+
+        self.memory.program_counter = match next_instruction {
+            NextInstruction::Increment => self
+                .memory
+                .program_counter
+                .checked_add(2)
+                .expect("program_counter overflow"),
+            NextInstruction::Jump(new) => new,
+        };
+    }
+
+    pub fn perform_operation(&mut self, op_1: u8, op_2: u8) -> NextInstruction {
         let code = op_1 & 0xF0;
         let variant = op_2 & 0x0F;
 
-        match [code, variant, *op_1, *op_2] {
-            [.., 0x00, 0xE0] => todo!("0 -> CLS"),
-            [.., 0x00, 0xEE] => todo!("0 -> RET"),
+        let framebuffer = &mut self.framebuffer;
+        let memory = &mut self.memory;
+
+        match [code, variant, op_1, op_2] {
+            [.., 0x00, 0xE0] => operations::clear_screen(framebuffer),
+            [.., 0x00, 0xEE] => operations::return_subroutine(memory, op_1, op_2),
             [0x00, ..] => {
                 panic!("SYS opcode: This should not be used or implemented by modern interpreters")
             }
 
-            [0x10, ..] => todo!("1 -> JP"),
-            [0x20, ..] => todo!("2 -> CALL"),
-            [0x30, ..] => todo!("3 -> SE"),
-            [0x40, ..] => todo!("4 -> SNE"),
-            [0x50, 0x00, ..] => todo!("5 -> SE"),
-            [0x60, ..] => todo!("6 -> LD"),
-            [0x70, ..] => todo!("7 -> ADD"),
+            [0x10, ..] => operations::jump(op_1, op_2),
+            [0x20, ..] => operations::call_subroutine(memory, op_1, op_2),
+            [0x30, ..] => operations::skip_if_equal_literal(memory, op_1, op_2),
+            [0x40, ..] => operations::skip_if_not_equal_literal(memory, op_1, op_2),
+            [0x50, 0x00, ..] => operations::skip_if_equal_register(memory, op_1, op_2),
+            [0x60, ..] => operations::load_literal_to_register(memory, op_1, op_2),
+            [0x70, ..] => operations::add_literal(memory, op_1, op_2),
 
-            [0x80, 0x00, ..] => todo!("8/x0 -> LD"),
-            [0x80, 0x01, ..] => todo!("8/x1 -> OR"),
-            [0x80, 0x02, ..] => todo!("8/x2 -> AND"),
-            [0x80, 0x03, ..] => todo!("8/x3 -> XOR"),
-            [0x80, 0x04, ..] => todo!("8/x4 -> ADD"),
-            [0x80, 0x05, ..] => todo!("8/x5 -> SUB"),
-            [0x80, 0x06, ..] => todo!("8/x6 -> SHR"),
-            [0x80, 0x07, ..] => todo!("8/x7 -> SUBN"),
-            [0x80, 0x0E, ..] => todo!("8/xE -> SHL"),
+            [0x80, 0x00, ..] => operations::load_register_to_register(memory, op_1, op_2),
+            [0x80, 0x01, ..] => operations::or_register(memory, op_1, op_2),
+            [0x80, 0x02, ..] => operations::and_register(memory, op_1, op_2),
+            [0x80, 0x03, ..] => operations::xor_register(memory, op_1, op_2),
+            [0x80, 0x04, ..] => operations::add_registers(memory, op_1, op_2),
+            [0x80, 0x05, ..] => operations::sub_registers(memory, op_1, op_2),
+            [0x80, 0x06, ..] => operations::shift_right(memory, op_1, op_2),
+            [0x80, 0x07, ..] => operations::subn_registers(memory, op_1, op_2),
+            [0x80, 0x0E, ..] => operations::shift_left(memory, op_1, op_2),
 
-            [0xA0, 0x00, ..] => todo!("A -> LD"),
-            [0xB0, 0x00, ..] => todo!("B -> JP"),
-            [0xC0, 0x00, ..] => todo!("C -> RND"),
-            [0xD0, 0x00, ..] => todo!("D -> DRW"),
+            [0x90, 0x00, ..] => operations::skip_if_not_equal_register(memory, op_1, op_2),
+
+            [0xA0, ..] => operations::load_literal_to_index(memory, op_1, op_2),
+            [0xB0, ..] => todo!("B -> JP"),
+            [0xC0, ..] => todo!("C -> RND"),
+            [0xD0, ..] => operations::draw(memory, framebuffer, op_1, op_2),
 
             [0xE0, _, _, 0x9E] => todo!("E/9E -> SKP"),
             [0xE0, _, _, 0xA1] => todo!("E/A1 -> SKNP"),
@@ -117,11 +119,11 @@ impl<D: Chip8Display> Chip8<D, Initialized> {
             [0xF0, _, _, 0xA7] => todo!("F/A7 -> LD"),
             [0xF0, _, _, 0x15] => todo!("F/15 -> LD"),
             [0xF0, _, _, 0x18] => todo!("F/18 -> LD"),
-            [0xF0, _, _, 0x1E] => todo!("F/1E -> ADD"),
+            [0xF0, _, _, 0x1E] => operations::add_index_pointer(memory, op_1, op_2),
             [0xF0, _, _, 0x29] => todo!("F/29 -> LD"),
-            [0xF0, _, _, 0x33] => todo!("F/33 -> LD"),
-            [0xF0, _, _, 0x55] => todo!("F/55 -> LD"),
-            [0xF0, _, _, 0x65] => todo!("F/65 -> LD"),
+            [0xF0, _, _, 0x33] => operations::store_binary_coded_decimal(memory, op_1, op_2),
+            [0xF0, _, _, 0x55] => operations::store_multiple_at_index(memory, op_1, op_2),
+            [0xF0, _, _, 0x65] => operations::load_multiple_from_index(memory, op_1, op_2),
 
             _ => panic!("Invalid op code {:#04X}{:02X?}", op_1, op_2),
         }
@@ -129,13 +131,23 @@ impl<D: Chip8Display> Chip8<D, Initialized> {
 }
 
 fn main() {
-    let bin = include_bytes!("../test/bin/1-chip8-logo.ch8");
+    // let bin = include_bytes!("../test/bin/1-chip8-logo.ch8");
+    // let bin = include_bytes!("../test/bin/2-ibm-logo.ch8");
+    let bin = include_bytes!("../test/bin/3-corax+.ch8");
 
     let chip8: Chip8<display::DoubleBuffer, _> = Default::default();
     let mut chip8 = chip8.load_binary(bin);
 
     let framebuffer = chip8.framebuffer.get_frame_buffer_ref();
 
+    draw_thread(framebuffer);
+
+    loop {
+        chip8.cycle();
+    }
+}
+
+fn draw_thread(framebuffer: Arc<Mutex<FrameBuffer>>) -> () {
     std::thread::spawn(move || {
         loop {
             const TARGET_FPS: u16 = 60;
@@ -149,7 +161,7 @@ fn main() {
 
             let output: String = framebuffer
                 .iter()
-                .flat_map(|a| (0..8).map(|i| (*a << i) & 0x40))
+                .flat_map(|a| (0..64).map(|i| *a & 0x1 << i))
                 .map(|bit| match bit {
                     0x00 => LOW_SYMBOL,
                     _ => HIGH_SYMBOL,
@@ -172,8 +184,4 @@ fn main() {
             std::thread::sleep(Duration::from_millis(sleep as u64));
         }
     });
-
-    loop {
-        chip8.cycle();
-    }
 }

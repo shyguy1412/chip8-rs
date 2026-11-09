@@ -2,23 +2,26 @@ use std::sync::{Arc, Mutex};
 
 pub mod sprites;
 
-type FramePackFormat = u8;
+type FramePackFormat = u64;
 pub const FRAME_WIDTH: usize = 64;
 pub const FRAME_HEIGHT: usize = 32;
 
 const SIZEOF_FRAME_PACK_FORMAT: usize = size_of::<FramePackFormat>() * 8;
 const FRAME_RESOLUTION: usize = FRAME_WIDTH * FRAME_HEIGHT;
 const FRAME_BYTES: usize = FRAME_RESOLUTION as usize / SIZEOF_FRAME_PACK_FORMAT;
+// const FRAME_BYTES: usize = FRAME_WIDTH * FRAME_HEIGHT;
 
-//asserts that frame can be packed neatly into the frame pack format
+// asserts that frame can be packed neatly into the frame pack format
 const _: () = const { assert!(FRAME_RESOLUTION == FRAME_BYTES * SIZEOF_FRAME_PACK_FORMAT) };
 
 pub trait Chip8Display {
     fn clear(&mut self) -> ();
+    fn draw(&mut self, x: u8, y: u8, row: u8) -> bool;
+    fn flush(&mut self) -> ();
 }
 
 #[derive(Debug)]
-pub struct FrameBuffer([u8; FRAME_BYTES]);
+pub struct FrameBuffer([FramePackFormat; FRAME_BYTES]);
 
 impl FrameBuffer {
     fn clear(&mut self) {
@@ -31,15 +34,26 @@ impl FrameBuffer {
 
 impl std::default::Default for FrameBuffer {
     fn default() -> Self {
-        Self([0; FRAME_BYTES])
+        let mut a = Self([0; FRAME_BYTES]);
+        a.iter_mut()
+            .enumerate()
+            .map(|(i, n)| *n = 0xAAAAAAAAAAAAAAAA)
+            .collect::<Vec<_>>();
+        a
     }
 }
 
 impl std::ops::Deref for FrameBuffer {
-    type Target = [u8; FRAME_BYTES];
+    type Target = [FramePackFormat; FRAME_BYTES];
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl std::ops::DerefMut for FrameBuffer {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 
@@ -63,5 +77,21 @@ impl DoubleBuffer {
 impl Chip8Display for DoubleBuffer {
     fn clear(&mut self) -> () {
         self.draw_frame.clear();
+        self.display_next_frame();
+    }
+
+    fn draw(&mut self, x: u8, y: u8, row: u8) -> bool {
+        let new_row = self.draw_frame[y as usize] ^ (row as u64).rotate_left(x as u32);
+
+        let intersected = new_row & self.draw_frame[y as usize] > 0;
+
+        self.draw_frame[y as usize] = new_row;
+
+        //return if intersected
+        intersected
+    }
+
+    fn flush(&mut self) -> () {
+        self.display_next_frame();
     }
 }
