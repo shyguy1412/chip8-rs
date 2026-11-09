@@ -133,7 +133,8 @@ impl<D: Chip8Display> Chip8<D, Initialized> {
 fn main() {
     // let bin = include_bytes!("../test/bin/1-chip8-logo.ch8");
     // let bin = include_bytes!("../test/bin/2-ibm-logo.ch8");
-    let bin = include_bytes!("../test/bin/3-corax+.ch8");
+    // let bin = include_bytes!("../test/bin/3-corax+.ch8");
+    let bin = include_bytes!("../test/bin/4-flags.ch8");
 
     let chip8: Chip8<display::DoubleBuffer, _> = Default::default();
     let mut chip8 = chip8.load_binary(bin);
@@ -170,7 +171,8 @@ fn draw_thread(framebuffer: Arc<Mutex<FrameBuffer>>) -> () {
                 .chunks_exact(FRAME_WIDTH)
                 .map(|chars| chars.iter().collect::<String>())
                 .fold(String::new(), |prev, cur| format!("{prev}{cur}\n"));
-            print!("{output}\x1B[{}A", FRAME_HEIGHT);
+            println!();
+            print!("{output}\x1B[{}A", FRAME_HEIGHT + 1);
             std::io::stdout().flush();
 
             let dif = std::time::Instant::now()

@@ -37,9 +37,12 @@ pub fn add_registers(memory: &mut Memory, op_1: u8, op_2: u8) -> NextInstruction
 pub fn add_index_pointer(memory: &mut Memory, op_1: u8, op_2: u8) -> NextInstruction {
     let a = op_1 & A_NIBBLE_MASK;
     let a_register = *memory.registers[a as usize];
-    memory
-        .index_register
-        .load(memory.index_register.overflowing_add(a_register as u16).0);
+
+    let (result, overflow) = memory.index_register.overflowing_add(a_register as u16);
+
+    memory.index_register.load(result);
+
+    memory.registers[0xF].load(overflow as u8);
 
     Increment
 }
