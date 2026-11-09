@@ -11,6 +11,7 @@ pub fn or_register(memory: &mut Memory, op_1: u8, op_2: u8) -> NextInstruction {
     let b_register = *memory.registers[b as usize];
 
     memory.registers[a as usize].load(a_register | b_register);
+    memory.registers[0xF].load(0);
 
     Increment
 }
@@ -23,6 +24,7 @@ pub fn and_register(memory: &mut Memory, op_1: u8, op_2: u8) -> NextInstruction 
     let b_register = *memory.registers[b as usize];
 
     memory.registers[a as usize].load(a_register & b_register);
+    memory.registers[0xF].load(0);
 
     Increment
 }
@@ -35,6 +37,7 @@ pub fn xor_register(memory: &mut Memory, op_1: u8, op_2: u8) -> NextInstruction 
     let b_register = *memory.registers[b as usize];
 
     memory.registers[a as usize].load(a_register ^ b_register);
+    memory.registers[0xF].load(0);
 
     Increment
 }
@@ -44,9 +47,9 @@ pub fn shift_right(memory: &mut Memory, op_1: u8, op_2: u8) -> NextInstruction {
     let a = op_1 & A_NIBBLE_MASK;
     let a_register = *memory.registers[a as usize];
 
+    memory.registers[a as usize].load(a_register >> 1);
     memory.registers[0xF].load(a_register & 1);
 
-    memory.registers[a as usize].load(a_register >> 1);
     Increment
 }
 
@@ -55,8 +58,8 @@ pub fn shift_left(memory: &mut Memory, op_1: u8, op_2: u8) -> NextInstruction {
     let a = op_1 & A_NIBBLE_MASK;
     let a_register = *memory.registers[a as usize];
 
-    memory.registers[0xF].load(a_register & 128);
-
     memory.registers[a as usize].load(a_register << 1);
+    memory.registers[0xF].load((a_register & (1 << 7) != 0) as u8);
+
     Increment
 }

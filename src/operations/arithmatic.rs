@@ -54,9 +54,10 @@ pub fn sub_registers(memory: &mut Memory, op_1: u8, op_2: u8) -> NextInstruction
     let a_register = *memory.registers[a as usize];
     let b_register = *memory.registers[b as usize];
 
-    memory.registers[a as usize].load(a_register.overflowing_sub(b_register).0);
+    let (result, overflow) = a_register.overflowing_sub(b_register);
 
-    memory.registers[0xF].load((a_register > b_register) as u8);
+    memory.registers[a as usize].load(result);
+    memory.registers[0xF].load(!overflow as u8);
 
     Increment
 }
@@ -68,9 +69,11 @@ pub fn subn_registers(memory: &mut Memory, op_1: u8, op_2: u8) -> NextInstructio
     let a_register = *memory.registers[a as usize];
     let b_register = *memory.registers[b as usize];
 
-    memory.registers[a as usize].load(b_register.overflowing_sub(a_register).0);
+    let (result, overflow) = b_register.overflowing_sub(a_register);
 
-    memory.registers[0xF].load((b_register > a_register) as u8);
+    memory.registers[a as usize].load(result);
+
+    memory.registers[0xF].load(!overflow as u8);
 
     Increment
 }

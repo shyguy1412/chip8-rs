@@ -132,8 +132,8 @@ impl<D: Chip8Display> Chip8<D, Initialized> {
 fn main() {
     // let bin = include_bytes!("../test/bin/1-chip8-logo.ch8");
     // let bin = include_bytes!("../test/bin/2-ibm-logo.ch8");
-    let bin = include_bytes!("../test/bin/3-corax+.ch8");
-    // let bin = include_bytes!("../test/bin/4-flags.ch8");
+    // let bin = include_bytes!("../test/bin/3-corax+.ch8");
+    let bin = include_bytes!("../test/bin/4-flags.ch8");
     // let bin = include_bytes!("../test/bin/5-quirks.ch8");
 
     let chip8: Chip8<display::DoubleBuffer, _> = Default::default();
