@@ -80,6 +80,7 @@ impl<D: Chip8Display> Chip8<D, Initialized> {
         let framebuffer = &mut self.framebuffer;
         let memory = &mut self.memory;
 
+        let hex = format!("{:#04X}{:02X?}", op_1, op_2);
         match [code, variant, op_1, op_2] {
             [.., 0x00, 0xE0] => operations::clear_screen(framebuffer),
             [.., 0x00, 0xEE] => operations::return_subroutine(memory, op_1, op_2),
