@@ -45,6 +45,14 @@ pub fn jump(op_1: u8, op_2: u8) -> NextInstruction {
     Jump(NonZero::new(addr).expect("Can not jump to null pointer"))
 }
 
+// 0xBnnn JP addr, QUIRK: first nibble of nnn doubles as register
+pub fn jump_with_offset(memory: &mut Memory, op_1: u8, op_2: u8) -> NextInstruction {
+    let addr = u16::from_be_bytes([op_1 & A_NIBBLE_MASK, op_2]);
+    let a = op_1 & A_NIBBLE_MASK;
+    let offset = *memory.registers[0] as u16;
+    Jump(NonZero::new(addr + offset).expect("Can not jump to null pointer"))
+}
+
 // 0x2nnn CALL addr
 pub fn call_subroutine(memory: &mut Memory, op_1: u8, op_2: u8) -> NextInstruction {
     let addr = u16::from_be_bytes([op_1 & A_NIBBLE_MASK, op_2]);

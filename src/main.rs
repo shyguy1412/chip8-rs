@@ -108,7 +108,7 @@ impl<D: Chip8Display> Chip8<D, Initialized> {
             [0x90, 0x00, ..] => operations::skip_if_not_equal_register(memory, op_1, op_2),
 
             [0xA0, ..] => operations::load_literal_to_index(memory, op_1, op_2),
-            [0xB0, ..] => todo!("B -> JP"),
+            [0xB0, ..] => operations::jump_with_offset(memory, op_1, op_1),
             [0xC0, ..] => todo!("C -> RND"),
             [0xD0, ..] => operations::draw(memory, framebuffer, op_1, op_2),
 
