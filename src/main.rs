@@ -116,7 +116,10 @@ impl<D: Chip8Display> Chip8<D, Initialized> {
             [0xE0, _, _, 0xA1] => operations::skip_if_button_not_pressed(memory, op_1, op_2),
 
             [0xF0, _, _, 0x07] => operations::load_delay_timer(memory, op_1, op_2),
-            [0xF0, _, _, 0x0A] => todo!("F/0A -> LD"),
+            [0xF0, _, _, 0x0A] => {
+                std::thread::park();
+                NextInstruction::Increment
+            }
             [0xF0, _, _, 0x15] => operations::set_delay_timer(memory, op_1, op_2),
             [0xF0, _, _, 0x18] => todo!("F/18 -> LD"),
             [0xF0, _, _, 0x1E] => operations::add_index_pointer(memory, op_1, op_2),
