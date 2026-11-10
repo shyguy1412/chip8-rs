@@ -45,6 +45,8 @@ pub fn store_multiple_at_index(memory: &mut Memory, op_1: u8, op_2: u8) -> NextI
         memory.ram[index + i as u16] = byte;
     }
 
+    memory.index_register.load(index + a as u16 + 1);
+
     Increment
 }
 
@@ -57,6 +59,8 @@ pub fn load_multiple_from_index(memory: &mut Memory, op_1: u8, op_2: u8) -> Next
         let byte = memory.ram[index + i as u16];
         memory.registers[i as usize].load(byte);
     }
+
+    memory.index_register.load(index + a as u16 + 1);
 
     Increment
 }
