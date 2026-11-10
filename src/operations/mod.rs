@@ -45,6 +45,8 @@ pub fn jump(op_1: u8, op_2: u8) -> NextInstruction {
 pub fn jump_with_offset(memory: &mut Memory, op_1: u8, op_2: u8) -> NextInstruction {
     let addr = u16::from_be_bytes([op_1 & A_NIBBLE_MASK, op_2]);
     let a = op_1 & A_NIBBLE_MASK;
+    //quirk impl
+    // let offset = *memory.registers[a as usize] as u16;
     let offset = *memory.registers[0] as u16;
     Jump(NonZero::new(addr + offset).expect("Can not jump to null pointer"))
 }
