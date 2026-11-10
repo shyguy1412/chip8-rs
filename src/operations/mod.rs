@@ -77,13 +77,13 @@ pub fn draw<D: Chip8Display>(
     let n = op_2 & A_NIBBLE_MASK;
     let i = *memory.index_register;
 
-    let x_pos = memory.registers.get(a as usize).expect("Invalid Register");
-    let y_pos = memory.registers.get(b as usize).expect("Invalid Register");
+    let x_pos = *memory.registers[a as usize];
+    let y_pos = *memory.registers[b as usize];
 
     let sprite = &memory.ram[i as usize..(i + n as u16) as usize];
 
     let intersected = (0..n)
-        .map(|row| framebuffer.draw(**x_pos, **y_pos + row, sprite[row as usize].reverse_bits()))
+        .map(|row| framebuffer.draw(x_pos, y_pos + row, sprite[row as usize].reverse_bits()))
         .fold(false, |prev, cur| prev || cur) as u8;
 
     memory.registers[0xF].load(intersected);
