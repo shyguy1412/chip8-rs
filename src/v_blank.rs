@@ -1,7 +1,4 @@
-use std::sync::{
-    Arc, Condvar, Mutex,
-    atomic::{AtomicBool, Ordering::Relaxed},
-};
+use std::sync::{Condvar, Mutex};
 
 pub struct VBlank {
     flag: Mutex<bool>,

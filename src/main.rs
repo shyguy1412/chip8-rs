@@ -2,10 +2,8 @@
 
 mod display;
 use std::{
-    fmt::format,
     io::Write,
     marker::PhantomData,
-    ops::{Add, Index},
     sync::{Arc, Mutex},
     time::Duration,
 };
@@ -215,5 +213,5 @@ fn draw_frame(framebuffer: &Mutex<FrameBuffer>) {
         .fold(String::new(), |prev, cur| format!("{prev}{cur}\n"));
     println!();
     print!("{output}\x1B[{}A", FRAME_HEIGHT + 1);
-    std::io::stdout().flush();
+    let _ = std::io::stdout().flush();
 }

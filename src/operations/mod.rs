@@ -57,7 +57,7 @@ pub fn call_subroutine(memory: &mut Memory, op_1: u8, op_2: u8) -> NextInstructi
 }
 
 // 0x00EE RET
-pub fn return_subroutine(memory: &mut Memory, op_1: u8, op_2: u8) -> NextInstruction {
+pub fn return_subroutine(memory: &mut Memory, _: u8, _: u8) -> NextInstruction {
     Jump(memory.stack.pop())
 }
 
