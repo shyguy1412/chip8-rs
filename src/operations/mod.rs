@@ -74,19 +74,21 @@ pub fn draw<D: Chip8Display>(
 
     let a = op_1 & A_NIBBLE_MASK;
     let b = (op_2 & B_NIBBLE_MASK) >> 4;
+    let a_register = *memory.registers[a as usize];
+    let b_register = *memory.registers[b as usize];
     let n = op_2 & A_NIBBLE_MASK;
     let i = *memory.index_register;
 
-    let x_pos = *memory.registers[a as usize];
-    let y_pos = *memory.registers[b as usize];
+    let x_pos = a_register % FRAME_WIDTH as u8;
+    let y_pos = b_register % FRAME_HEIGHT as u8;
 
     let sprite = &memory.ram[i as usize..(i + n as u16) as usize];
 
     let intersected = (0..n)
-        .map(|row| framebuffer.draw(x_pos, y_pos + row, sprite[row as usize].reverse_bits()))
-        .fold(false, |prev, cur| prev || cur) as u8;
+        .map(|row| framebuffer.draw(x_pos, y_pos + row, sprite[row as usize]))
+        .fold(false, |prev, cur| prev || cur);
 
-    memory.registers[0xF].load(intersected);
+    memory.registers[0xF].load(intersected as u8);
 
     framebuffer.flush();
 

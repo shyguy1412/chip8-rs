@@ -76,12 +76,21 @@ impl Chip8Display for DoubleBuffer {
     }
 
     fn draw(&mut self, x: u8, y: u8, row: u8) -> bool {
-        let y = y as usize % FRAME_HEIGHT;
-        let new_row = self.draw_frame[y] ^ (row as u64).rotate_left(x as u32);
+        if y >= FRAME_HEIGHT as u8 {
+            return false;
+        }
+        // let current = self.draw_frame[y as usize];
+        let (shift, overflow) = (FRAME_WIDTH as u32).overflowing_sub(x as u32 + 8);
+        let neg_shift = shift.cast_signed().abs();
 
-        let intersected = new_row & self.draw_frame[y] > 0;
+        let new_row = match overflow {
+            false => self.draw_frame[y as usize] ^ ((row as u64) << shift),
+            true => self.draw_frame[y as usize] ^ ((row as u64) >> neg_shift),
+        };
 
-        self.draw_frame[y] = new_row;
+        let intersected = new_row & self.draw_frame[y as usize] > 0;
+
+        self.draw_frame[y as usize] = new_row;
 
         //return if intersected
         intersected
