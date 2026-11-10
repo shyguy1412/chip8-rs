@@ -1,4 +1,4 @@
-#![cfg_attr(debug_assertions, allow(dead_code, unused))]
+// #![cfg_attr(debug_assertions, allow(dead_code, unused))]
 
 mod display;
 use std::{
@@ -81,7 +81,12 @@ impl<D: Chip8Display> Chip8<D, Initialized> {
         let framebuffer = &mut self.framebuffer;
         let memory = &mut self.memory;
 
-        let hex = format!("{:#04X}{:02X?}", op_1, op_2);
+        // let hex = format!("{:#04X}{:02X?}", op_1, op_2);
+
+        // if hex == "0xD011" {
+        //     drop(());
+        // }
+
         match [code, variant, op_1, op_2] {
             [.., 0x00, 0xE0] => operations::clear_screen(framebuffer),
             [.., 0x00, 0xEE] => operations::return_subroutine(memory, op_1, op_2),
@@ -202,7 +207,8 @@ fn draw_frame(framebuffer: &Mutex<FrameBuffer>) {
 
     let output: String = framebuffer
         .iter()
-        .flat_map(|a| (0..64).map(|i| *a & 0x1 << i))
+        .map(|row| row.reverse_bits())
+        .flat_map(|a| (0..64).map(move |i| a & 0x1 << i))
         .map(|bit| match bit {
             0x00 => LOW_SYMBOL,
             _ => HIGH_SYMBOL,

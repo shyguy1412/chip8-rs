@@ -1,5 +1,3 @@
-use core::arch;
-
 use crate::memory::Memory;
 
 use super::{A_NIBBLE_MASK, B_NIBBLE_MASK, NextInstruction};
@@ -34,7 +32,7 @@ pub fn add_registers(memory: &mut Memory, op_1: u8, op_2: u8) -> NextInstruction
 }
 
 // 0xFa1E ADD I, Va
-pub fn add_index_pointer(memory: &mut Memory, op_1: u8, op_2: u8) -> NextInstruction {
+pub fn add_index_pointer(memory: &mut Memory, op_1: u8, _: u8) -> NextInstruction {
     let a = op_1 & A_NIBBLE_MASK;
     let a_register = *memory.registers[a as usize];
 

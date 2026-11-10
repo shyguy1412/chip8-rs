@@ -106,7 +106,6 @@ impl std::default::Default for Memory {
 }
 
 impl Memory {
-    pub fn load_binary() {}
     pub fn get_next_operation(&self) -> [u8; 2] {
         let op_1 = self.ram[self.program_counter.get()];
         let op_2 = self.ram[self.program_counter.get() + 1];

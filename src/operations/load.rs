@@ -36,7 +36,7 @@ pub fn load_literal_to_index(memory: &mut Memory, op_1: u8, op_2: u8) -> NextIns
 }
 
 // 0xFa55 LD [I], Va
-pub fn store_multiple_at_index(memory: &mut Memory, op_1: u8, op_2: u8) -> NextInstruction {
+pub fn store_multiple_at_index(memory: &mut Memory, op_1: u8, _: u8) -> NextInstruction {
     let a = op_1 & A_NIBBLE_MASK;
     let index = *memory.index_register;
 
@@ -51,7 +51,7 @@ pub fn store_multiple_at_index(memory: &mut Memory, op_1: u8, op_2: u8) -> NextI
 }
 
 // 0xFa65 LD Va, [I]
-pub fn load_multiple_from_index(memory: &mut Memory, op_1: u8, op_2: u8) -> NextInstruction {
+pub fn load_multiple_from_index(memory: &mut Memory, op_1: u8, _: u8) -> NextInstruction {
     let a = op_1 & A_NIBBLE_MASK;
     let index = *memory.index_register;
 
@@ -66,12 +66,12 @@ pub fn load_multiple_from_index(memory: &mut Memory, op_1: u8, op_2: u8) -> Next
 }
 
 //0xFa33 LD B, Va
-pub fn store_binary_coded_decimal(memory: &mut Memory, op_1: u8, op_2: u8) -> NextInstruction {
+pub fn store_binary_coded_decimal(memory: &mut Memory, op_1: u8, _: u8) -> NextInstruction {
     let a = op_1 & A_NIBBLE_MASK;
     let a_register = *memory.registers[a as usize];
     let hundreds = a_register / 100;
     let tens = (a_register - (hundreds * 100)) / 10;
-    let ones = (a_register - (hundreds * 100) - (tens * 10));
+    let ones = a_register - (hundreds * 100) - (tens * 10);
     memory.ram[*memory.index_register] = hundreds;
     memory.ram[*memory.index_register + 1] = tens;
     memory.ram[*memory.index_register + 2] = ones;
@@ -79,7 +79,7 @@ pub fn store_binary_coded_decimal(memory: &mut Memory, op_1: u8, op_2: u8) -> Ne
 }
 
 //0xFa15 LD DT, Va
-pub fn set_delay_timer(memory: &mut Memory, op_1: u8, op_2: u8) -> NextInstruction {
+pub fn set_delay_timer(memory: &mut Memory, op_1: u8, _: u8) -> NextInstruction {
     let a = op_1 & A_NIBBLE_MASK;
     let a_register = *memory.registers[a as usize];
     *memory.delay_timer.lock().unwrap_or_else(|e| e.into_inner()) = a_register;
@@ -87,7 +87,7 @@ pub fn set_delay_timer(memory: &mut Memory, op_1: u8, op_2: u8) -> NextInstructi
 }
 
 //0xFa07 LD Va, DT
-pub fn load_delay_timer(memory: &mut Memory, op_1: u8, op_2: u8) -> NextInstruction {
+pub fn load_delay_timer(memory: &mut Memory, op_1: u8, _: u8) -> NextInstruction {
     let a = op_1 & A_NIBBLE_MASK;
     let delay_timer = *memory.delay_timer.lock().unwrap_or_else(|e| e.into_inner());
     memory.registers[a as usize].load(delay_timer);
