@@ -15,9 +15,10 @@ use display::*;
 mod memory;
 use memory::*;
 
-use crate::operations::NextInstruction;
+use crate::{operations::NextInstruction, v_blank::VBlank};
 
 mod operations;
+mod v_blank;
 
 trait Chip8State {}
 
@@ -26,6 +27,8 @@ impl Chip8State for Uninitialized {}
 
 struct Initialized;
 impl Chip8State for Initialized {}
+
+static V_BLANK_INTERRUPT: VBlank = VBlank::new();
 
 #[derive(Debug)]
 struct Chip8<D: Chip8Display = DoubleBuffer, State: Chip8State = Uninitialized> {
@@ -183,6 +186,7 @@ fn timer_thread(
             }
             let sleep = FRAME_TIMING as u128 - dif;
             std::thread::sleep(Duration::from_millis(sleep as u64));
+            V_BLANK_INTERRUPT.send();
         }
     });
 }

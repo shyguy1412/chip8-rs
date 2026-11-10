@@ -11,11 +11,7 @@ pub use input::*;
 
 use std::num::NonZero;
 
-use crate::{
-    Chip8,
-    display::{Chip8Display, FrameBuffer},
-    memory::Memory,
-};
+use crate::{display::Chip8Display, memory::Memory};
 
 pub enum NextInstruction {
     Increment,
@@ -72,6 +68,8 @@ pub fn draw<D: Chip8Display>(
     op_1: u8,
     op_2: u8,
 ) -> NextInstruction {
+    crate::V_BLANK_INTERRUPT.wait();
+
     let a = op_1 & A_NIBBLE_MASK;
     let b = (op_2 & B_NIBBLE_MASK) >> 4;
     let n = op_2 & A_NIBBLE_MASK;
