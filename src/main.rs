@@ -28,13 +28,13 @@ struct Initialized;
 impl Chip8State for Initialized {}
 
 #[derive(Debug)]
-struct Chip8<D: Chip8Display, State: Chip8State = Initialized> {
+struct Chip8<D: Chip8Display = DoubleBuffer, State: Chip8State = Uninitialized> {
     framebuffer: D,
     memory: Memory,
     state: PhantomData<State>,
 }
 
-impl<D: Chip8Display + Default> Default for Chip8<D, Uninitialized> {
+impl Default for Chip8 {
     // at the time of writing this, setting custom default values for a struct is not possible with derive macros
     fn default() -> Self {
         Self {
@@ -137,14 +137,14 @@ fn main() {
     // let bin = include_bytes!("../test/bin/1-chip8-logo.ch8");
     // let bin = include_bytes!("../test/bin/2-ibm-logo.ch8");
     // let bin = include_bytes!("../test/bin/3-corax+.ch8");
-    let bin = include_bytes!("../test/bin/4-flags.ch8");
-    // let bin = include_bytes!("../test/bin/5-quirks.ch8");
-
-    let chip8: Chip8<display::DoubleBuffer, _> = Default::default();
-    let mut chip8 = chip8.load_binary(bin);
-
-    //automatically enable chip8 test for test 5-quirks
+    // let bin = include_bytes!("../test/bin/4-flags.ch8");
+    let bin = include_bytes!("../test/bin/5-quirks.ch8");
+    // // automatically enable chip8 test for test 5-quirks
     // chip8.memory.ram[512] = 1;
+    // let bin = include_bytes!("../test/bin/6-keypad.ch8");
+
+    let mut chip8 = Chip8::default().load_binary(bin);
+    chip8.memory.ram[0x1FF] = 1;
 
     let framebuffer = chip8.framebuffer.get_frame_buffer_ref();
     let delay_timer = chip8.memory.delay_timer.clone();
